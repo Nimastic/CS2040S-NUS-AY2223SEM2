@@ -1,0 +1,33 @@
+class InversionCounter {
+    public static long countSwaps(int[] arr) {
+        return 0;
+    }
+    /**
+     * Given an input array so that arr[left1] to arr[right1] is sorted and arr[left2] to arr[right2] is sorted
+     * (also left2 = right1 + 1), merges the two so that arr[left1] to arr[right2] is sorted, and returns the
+     * minimum amount of adjacent swaps needed to do so.
+     */
+    public static long mergeAndCount(int[] arr, int left1, int right1, int left2, int right2) {
+        int[] temp = new int[right2 - left1 + 1];
+        int index = 0, i = left1, j = left2;
+        long count = 0;
+        while (i <= right1 && j <= right2) {
+            if (arr[i] <= arr[j]) {
+                temp[index++] = arr[i++];
+            } else {
+                temp[index++] = arr[j++];
+                count += right1 - i + 1;
+            }
+        }
+        while (i <= right1) {
+            temp[index++] = arr[i++];
+        }
+        while (j <= right2) {
+            temp[index++] = arr[j++];
+        }
+        for (i = 0; i < temp.length; i++) {
+            arr[left1 + i] = temp[i];
+        }
+        return count;
+    }
+}
