@@ -1,0 +1,6 @@
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello CS2040S! My name is Jeriel. The answer to 1a is 3125 and the answer to 1b" +
+                "is that the function calculates A^B." );
+    }
+}
