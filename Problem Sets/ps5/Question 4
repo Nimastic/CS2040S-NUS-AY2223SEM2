@@ -1,0 +1,135 @@
+import java.util.ArrayList;
+public class Trie {
+    // Wildcards
+    final char WILDCARD = '.';
+    private class TrieNode {
+        
+        
+        TrieNode[] children = new TrieNode[62];
+        boolean isEnd = false;
+        char data;
+        TrieNode() {}
+        TrieNode(char data) {
+            this.data = data;
+        }
+    }
+    public TrieNode root = null;
+    public Trie() {
+        root = new TrieNode();
+    }
+    int charIndex(char c) {
+        int ascii = c;
+        if (ascii >= 48 && ascii <= 57) {
+            return ascii - 48;
+        } else if (ascii >= 65 && ascii <= 90) {
+            return ascii - 55;
+        } else { 
+            return ascii - 61;
+        }
+    }
+    /**
+     * Inserts string s into the Trie.
+     *
+     * @param s string to insert into the Trie
+     */
+    void insert(String s) {
+        int length = s.length();
+        TrieNode node = root;
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            int index = charIndex(c);
+            if (node.children[index] == null) {
+                node.children[index] = new TrieNode(c);
+            }
+            node = node.children[index];
+        }
+        node.isEnd = true;
+    }
+    /**
+     * Checks whether string s exists inside the Trie or not.
+     *
+     * @param s string to check for
+     * @return whether string s is inside the Trie
+     */
+    boolean contains(String s) {
+        int length = s.length();
+        TrieNode node = root;
+        for (int i = 0; i < length; i++) {
+            int index = charIndex(s.charAt(i));
+            if (node.children[index] == null) {
+                return false;
+            }
+            node = node.children[index];
+        }
+        return node.isEnd;
+    }
+    /**
+     * Searches for strings with prefix matching the specified pattern sorted by lexicographical order. This inserts the
+     * results into the specified ArrayList. Only returns at most the first limit results.
+     *
+     * @param s       pattern to match prefixes with
+     * @param results array to add the results into
+     * @param limit   max number of strings to add into results
+     */
+    void prefixSearch(String s, ArrayList<String> results, int limit) {
+        prefixSearchHelper(s, 0, root, results, new StringBuilder(""), limit);
+    }
+    void prefixSearchHelper(String s, int i, TrieNode node, ArrayList<String> results,
+                            StringBuilder result, int limit) {
+        if (i == s.length()) {
+            if (results.size() < limit && node.isEnd) {
+                results.add(String.valueOf(result));
+            }
+            for (TrieNode child : node.children) {
+                if (child != null) {
+                    StringBuilder copy = new StringBuilder(result);
+                    prefixSearchHelper(s, i, child, results, copy.append(child.data), limit);
+                }
+                if (results.size() == limit) {
+                    break;
+                }
+            }
+        } else {
+            char c = s.charAt(i);
+            if (c == WILDCARD) {
+                for (TrieNode child : node.children) {
+                    if (child != null) {
+                        StringBuilder copy = new StringBuilder(result);
+                        prefixSearchHelper(s, i + 1, child, results, copy.append(child.data), limit);
+                    }
+                }
+            } else {
+                int index = charIndex(c);
+                TrieNode child = node.children[index];
+                if (child != null) {
+                    StringBuilder copy = new StringBuilder(result);
+                    prefixSearchHelper(s, i + 1, child, results, copy.append(child.data), limit);
+                }
+            }
+        }
+    }
+    
+    
+    String[] prefixSearch(String s, int limit) {
+        ArrayList<String> results = new ArrayList<String>();
+        prefixSearch(s, results, limit);
+        return results.toArray(new String[0]);
+    }
+    public static void main(String[] args) {
+        Trie t = new Trie();
+        t.insert("peter");
+        t.insert("piper");
+        t.insert("picked");
+        t.insert("a");
+        t.insert("peck");
+        t.insert("of");
+        t.insert("pickled");
+        t.insert("peppers");
+        t.insert("pepppito");
+        t.insert("pepi");
+        t.insert("pik");
+        String[] result1 = t.prefixSearch("pe", 10);
+        String[] result2 = t.prefixSearch("pe.", 10);
+      
+    }
+}
