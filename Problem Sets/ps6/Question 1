@@ -1,0 +1,106 @@
+import java.util.Random;
+import java.util.HashMap;
+import static java.lang.Integer.parseInt;
+/**
+ * This is the main class for your Markov Model.
+ *
+ * Assume that the text will contain ASCII characters in the range [1,255].
+ * Ascii character 0 (the NULL character) will be treated as a non-character.
+ *
+ * Any such NULL characters in the original text should be ignored.
+ *
+ */
+public class MarkovModel {
+	// Use this to generatre random numbers as needed
+	private Random generator = new Random();
+	// This is a special symbol to indicate no character
+	public static final char NOCHARACTER = (char) 0;
+	HashMap<String, int[]> hashTable;
+	int order;
+	/**
+	 * Contructor for MarkovModel class.
+	 *
+	 * int order specifies the number of characters to identify for the Markov Model sequeuece.
+	 * long seed specified the seed used by the random number generator
+	 */
+	public MarkovModel(int order, long seed) {
+		// Initialize your class here
+		this.hashTable = new HashMap<>();
+		this.order = order;
+		// Initialize the random number generator
+		generator.setSeed(seed);
+	}
+	/**
+	 *  Build the Markov Model based on the text string.
+	 *  Count the frequency of each kgram in the text
+	 */
+	void initializeText(String text) {
+		// Build the Markov model here
+		int length = text.length();
+		int nextChar;
+		String kgramValue;
+		if (length > this.order) {
+			for (int i = 0; i < length - this.order; i++) {
+				kgramValue = text.substring(i, i + this.order);
+				nextChar = text.charAt(i + this.order);
+				if (!hashTable.containsKey(kgramValue)) {
+					hashTable.put(kgramValue, new int[257]);
+				}
+				hashTable.get(kgramValue)[nextChar]++;
+				hashTable.get(kgramValue)[256]++;
+			}
+		}
+		kgramValue = text.substring(length - this.order, length);
+		if (!hashTable.containsKey(kgramValue)) {
+			hashTable.put(kgramValue, new int[257]);
+		}
+		hashTable.get(kgramValue)[256]++;
+	}
+	/**
+	 *  Returns the number of times sequence kgram appeared in the text
+	 *  It should return an integer 0 or more.
+	 */
+	public int getFrequency(String kgram) {
+		return hashTable.get(kgram)[256];
+	}
+	/**
+	 * Gets number of times character c appeared following sequence kgram.
+	 * It should return an integer 0 or more.
+	 */
+	public int getFrequency(String kgram, char c) {
+		int nextChar = c;
+		return hashTable.get(kgram)[nextChar];
+		//return 0;
+	}
+	/**
+	 * Generates the next character from the Markov Model.
+	 * Return NOCHARACTER if the kgram is not in the table, or if there is no
+	 * valid character following the kgram.
+	 */
+	public char nextCharacter(String kgram){
+		// See the problem set description for details
+		// on how to make the random selecton.
+		if (kgram.length() == this.order) {
+			if(!hashTable.containsKey(kgram)) {
+				return NOCHARACTER;
+			}
+			int[] valueArray = hashTable.get(kgram);
+			int freq = 0;
+			for (int i = 0; i < 256; i++) {
+				freq += valueArray[i];
+			}
+			if (freq == 0) {
+				return NOCHARACTER;
+			}
+			int randomNumber = this.generator.nextInt(freq);
+			for (int i = 0; i < 256; i++) {
+				randomNumber -= valueArray[i];
+				if (randomNumber < 0) {
+					return (char) i;
+				}
+			}
+		}
+		return NOCHARACTER;
+		//return 'a';
+	}
+}
