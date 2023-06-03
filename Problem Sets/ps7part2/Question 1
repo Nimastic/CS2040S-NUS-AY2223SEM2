@@ -1,0 +1,425 @@
+/**
+ * Represents a single room in the maze.
+ */
+public class Room {
+	private boolean westWall, eastWall, northWall, southWall;
+	public boolean onPath;
+	Room(boolean north, boolean south, boolean east, boolean west) {
+		northWall = north;
+		southWall = south;
+		eastWall = east;
+		westWall = west;
+		onPath = false;
+	}
+	/**
+	 * @return true iff there is a wall to the west of the room
+	 */
+	public boolean hasWestWall() {
+		return westWall;
+	}
+	/**
+	 * @return true iff there is a wall to the east of the room
+	 */
+	public boolean hasEastWall() {
+		return eastWall;
+	}
+	/**
+	 * @return true iff there is a wall to the north of the room
+	 */
+	public boolean hasNorthWall() {
+		return northWall;
+	}
+	/**
+	 * @return true iff there is a wall to the south of the room
+	 */
+	public boolean hasSouthWall() {
+		return southWall;
+	}
+}
+Show comments panel
+import java.util.LinkedList;
+import java.util.Queue;
+public class MazeSolverWithPower implements IMazeSolverWithPower {
+	private static final int NORTH = 0, SOUTH = 1, EAST = 2, WEST = 3;
+	private static int[][] DELTAS = new int[][] {
+		{ -1, 0 }, // North
+		{ 1, 0 }, // South
+		{ 0, 1 }, // East
+		{ 0, -1 } // West
+	};
+	
+	
+	
+	private Node[][][] node;
+	private Maze maze;
+	private boolean[][] visited;
+	private int[] roomCount;
+	class Node {
+		int x;
+		int y;
+		int power;
+		int distance;
+		Node parent;
+		boolean visited;
+		public Node(int x, int y, int power, int distance, Node parent, boolean visited) {
+			this.x = x;
+			this.y = y;
+			this.power = power;
+			this.distance = distance;
+			this.parent = parent;
+			this.visited = visited;
+		}
+	}
+	public MazeSolverWithPower() {
+		this.maze = null;
+	}
+	@Override
+	public void initialize(Maze maze) {
+		this.maze = maze;
+		this.node = new Node[maze.getRows()][maze.getColumns()][maze.getRows() * maze.getColumns()];
+		this.roomCount = new int[maze.getRows() * maze.getColumns()];
+		this.visited = new boolean[maze.getRows()][maze.getColumns()];
+	}
+	public void clean(int startRow, int startCol, int endRow, int endCol) throws Exception {
+		if (this.maze == null) {
+			throw new Exception("Oh no! You cannot call me without initializing the maze!");
+		}
+		if (startRow < 0 || startCol < 0 || startRow >= this.maze.getRows() || startCol >= this.maze.getColumns() ||
+				endRow < 0 || endCol < 0 || endRow >= this.maze.getRows() || endCol >= this.maze.getColumns()) {
+			throw new IllegalArgumentException("Invalid start/end coordinate");
+		}
+		for (int i = 0; i < this.roomCount.length; i++) {
+			this.roomCount[i] = 0;
+		}
+		this.roomCount[0] = 1;
+		for (int j = 0; j < maze.getRows(); j++) {
+			for (int h = 0; h < maze.getColumns(); h++) {
+				this.visited[j][h] = false;
+			}
+		}
+		for (int i = 0; i < maze.getRows(); i++) {
+			for (int h = 0; h < maze.getColumns(); h++) {
+				for (int j = 0; j < maze.getRows() * maze.getColumns(); j++) {
+					this.node[i][h][j] = null;
+				}
+			}
+		}
+	}
+	@Override
+	public Integer pathSearch(int startRow, int startCol, int endRow, int endCol) throws Exception {
+		clean(startRow, startCol, endRow, endCol);
+		Integer numberOfSteps = Dikstras(startRow, startCol, endRow, endCol, 0);
+		return numberOfSteps;
+	}
+	@Override
+	public Integer pathSearch(int startRow, int startCol, int endRow,
+							  int endCol, int superpowers) throws Exception {
+		clean(startRow, startCol, endRow, endCol);
+		Integer numberOfSteps = Dikstras(startRow, startCol, endRow, endCol, superpowers);
+		return numberOfSteps;
+	}
+	public Integer Dikstras(int startRow, int startCol, int endRow, int endCol, int superpowers) {
+		Queue<Node> queue = new LinkedList<Node>();
+		Node startingNode = new Node(startRow, startCol, superpowers, 0, null, true);
+		this.visited[startRow][startCol] = true;
+		boolean found = false;
+		int numberOfSteps = -1;
+		Node finalNode = null;
+		queue.add(startingNode);
+		while (!queue.isEmpty()) {
+			Node currNode = queue.remove();
+			currNode.visited = true;
+			this.visited[startRow][startCol] = true;
+			if (currNode.x == endRow && currNode.y == endCol && !found) {
+				numberOfSteps = currNode.distance;
+				finalNode = currNode;
+				found = true;
+			}
+			for (int dir = 0; dir < 4; dir++) {
+				// if travel out of the maze then skip
+				if (!withinMaze(currNode.x, currNode.y, dir)) {
+					continue;
+				}
+				// if direction is a wall and no more power then skip
+				if (hasWall(currNode.x, currNode.y, dir) && currNode.power <= 0) {
+					continue;
+				}
+				// else, safe to create a new node
+				int newRow = currNode.x + DELTAS[dir][0];
+				int newCol = currNode.y + DELTAS[dir][1];
+				int newPower = currNode.power;
+				if (hasWall(currNode.x, currNode.y, dir)) {
+					newPower = newPower - 1;
+				}
+				int newDistance = currNode.distance + 1;
+				Node oldParent = currNode;
+				Node newNode = new Node(newRow, newCol, newPower, newDistance, oldParent, true);
+				// if node in particular has been visited before then skip
+				if (this.node[newNode.x][newNode.y][newNode.power] != null) {
+					if (this.node[newNode.x][newNode.y][newNode.power].visited == true) {
+						continue;
+					}
+				}
+				this.node[newRow][newCol][newPower] = newNode;
+				queue.add(newNode);
+				if (!this.visited[newRow][newCol]) {
+					this.roomCount[newDistance]++;
+					this.visited[newRow][newCol] = true;
+				}
+			}
+		}
+		drawPath(finalNode);
+		return numberOfSteps == -1 ? null : numberOfSteps;
+	}
+	public void drawPath(Node finalNode) {
+		if (finalNode == null) {
+			return;
+		}
+		Node currNode = finalNode;
+		while (currNode.parent != null) {
+			maze.getRoom(currNode.x, currNode.y).onPath = true;
+			currNode = currNode.parent;
+		}
+        maze.getRoom(currNode.x, currNode.y).onPath = true;
+	}
+	private boolean hasWall(int row, int col, int dir) {
+		switch (dir) {
+			case NORTH:
+				return maze.getRoom(row, col).hasNorthWall();
+			case SOUTH:
+				return maze.getRoom(row, col).hasSouthWall();
+			case EAST:
+				return maze.getRoom(row, col).hasEastWall();
+			case WEST:
+				return maze.getRoom(row, col).hasWestWall();
+		}
+		    // will never reach
+		return false;
+	}
+	private boolean withinMaze(int row, int col, int dir) {
+		if (row + DELTAS[dir][0] < 0 || row + DELTAS[dir][0] >= maze.getRows()) return false;
+		if (col + DELTAS[dir][1] < 0 || col + DELTAS[dir][1] >= maze.getColumns()) return false;
+		return true;
+	}
+	@Override
+	public Integer numReachable(int k) throws Exception {
+		if (k >= this.roomCount.length) {
+			return 0;
+		}
+		return this.roomCount[k];
+	}
+	public static void main(String[] args) {
+		try {
+			Maze maze = Maze.readMaze("maze-dense.txt");
+			IMazeSolverWithPower solver = new MazeSolverWithPower();
+			solver.initialize(maze);
+			System.out.println(solver.pathSearch(0, 0, 1, 1, 2));
+			MazePrinter.printMaze(maze);
+			for (int i = 0; i <= 9; ++i) {
+				System.out.println("Steps " + i + " Rooms: " + solver.numReachable(i));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+Show comments panel
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+public class Maze {
+    private final static char WALL = '#';
+	private int rows, columns; // size of the maze
+	private Room[][] rooms;
+	/**
+	 * Creates an empty maze.
+	 */
+	private Maze() {
+		rows = columns = 0;
+		rooms = null;
+	}
+	/**
+	 * Creates a maze consisting of the given grid of rooms.
+	 */
+	Maze(Room[][] rooms) {
+		assert rooms.length > 0;
+		this.rooms = rooms;
+		rows = rooms.length * 2 + 1;
+		columns = rooms[0].length * 2 + 1;
+	}
+	/**
+	 * Retrieves a room given the row and column (both 0-indexed).
+	 *
+	 * @param row the row index of the room
+	 * @param column the column index of the room
+	 * @return room the room at the requested coordinate
+	 */
+	public Room getRoom(int row, int column) {
+		if (row >= getRows() || column >= getColumns() || row < 0 || column < 0) {
+			throw new IllegalArgumentException();
+		}
+		return rooms[row][column];
+	}
+	/**
+	 * @return the number of rows in the maze
+	 */
+	public int getRows() {
+		return rows / 2;
+	}
+	/**
+	 * @return the number of columns in the maze
+	 */
+	public int getColumns() {
+		return columns / 2;
+	}
+	/**
+	 * Reads in an ASCII description of a maze and returns the
+	 * created maze object.
+	 *
+	 * @param fileName
+	 * @return maze
+	 * @throws IOException if the input format is invalid
+	 */
+	public static Maze readMaze(String fileName) throws IOException {
+		FileReader fin = new FileReader(fileName);
+		BufferedReader bin = new BufferedReader(fin);
+		Maze maze = new Maze();
+		List<String> input = new ArrayList<>();
+		String line;
+		while ((line = bin.readLine()) != null) {
+			if (line.isEmpty()) {
+				break; // end of input
+			}
+			if (maze.columns > 0 && line.length() != maze.columns) {
+				throw new IOException("Invalid input format");
+			}
+			maze.columns = line.length();
+			maze.rows++;
+			input.add(line);
+		}
+		if (maze.rows % 2 == 0 || maze.columns % 2 == 0) {
+			throw new IOException("Invalid input format");
+		}
+		maze.rooms = new Room[maze.rows / 2][maze.columns / 2];
+		for (int i = 1; i < maze.rows - 1; i += 2) {
+			for (int j = 1; j < maze.columns - 1; j += 2) {
+				maze.rooms[i / 2][j / 2] = new Room(
+						input.get(i - 1).charAt(j) == WALL, // north: i-1
+						input.get(i + 1).charAt(j) == WALL, // south: i+1
+						input.get(i).charAt(j + 1) == WALL, // east: j+1
+						input.get(i).charAt(j - 1) == WALL  // west: j-1
+				);
+			}
+		}
+		assert (!bin.ready());
+		bin.close();
+		return maze;
+	}
+}
+Show comments panel
+public interface IMazeSolver {
+	/**
+	 * (Re-)Initializes the solver with a maze.
+	 *
+	 * @param maze the maze to initialize the solver with
+	 */
+	void initialize(Maze maze);
+	/**
+	 * Finds the shortest path from a given starting coordinate to an
+	 * ending coordinate.
+	 *
+	 * @param startRow the row index of the starting coordinate
+	 * @param startCol the column index of the starting coordinate
+	 * @param endRow the row index of the target coordinate
+	 * @param endCol the column index of the target coordinate
+	 * @return null if there is no path from start to end
+	 * @throws Exception
+	 */
+	Integer pathSearch(int startRow, int startCol, int endRow, int endCol) throws Exception;
+	/**
+	 * Returns the number of rooms that require a minimum of exactly k steps to
+     * reach it, from the starting coordinate as defined in the most recent
+     * call to pathSearch.
+	 *
+	 * @param k the number of steps
+	 * @return the number of rooms such that the minimum number of steps
+     *         required to reach it is k
+	 * @throws Exception
+	 */
+	Integer numReachable(int k) throws Exception;
+}
+Show comments panel
+public interface IMazeSolverWithPower extends IMazeSolver {
+	/**
+	 * Finds the shortest path from a given starting coordinate to an ending
+	 * coordinate with a fixed usage limit of superpowers given.
+	 *
+	 * @param startRow the row index of the starting coordinate
+	 * @param startCol the column index of the starting coordinate
+	 * @param endRow the row index of the target coordinate
+	 * @param endCol the column index of the target coordinate
+	 * @param superpowers the usage limit of the superpower
+	 * @return null if there is no path from start to end
+	 * @throws Exception
+	 */
+	Integer pathSearch(int startRow, int startCol, int endRow, int endCol, int superpowers) throws Exception;
+}
+Show comments panel
+public class MazePrinter {
+	// static class
+	private MazePrinter() {
+	}
+	enum PrinterBlocks {
+		WALL("##"), PATH("PP"), AIR("  "), DESTROY("XX");
+		private final String block;
+		PrinterBlocks(String s) {
+			block = s;
+		}
+		String val() {
+			return block;
+		}
+	}
+	static void printMaze(Maze maze) {
+		for (int i = 0; i < maze.getRows(); ++i) {
+			System.out.print(PrinterBlocks.WALL.val());
+			for (int j = 0; j < maze.getColumns(); ++j) {
+				Room room = maze.getRoom(i, j);
+				if (room.hasNorthWall()) {
+					System.out.print(PrinterBlocks.WALL.val());
+				} else {
+					if (i > 0 && maze.getRoom(i - 1, j).onPath && room.onPath) {
+						System.out.print(PrinterBlocks.PATH.val());
+					} else {
+						System.out.print(PrinterBlocks.AIR.val());
+					}
+				}
+				System.out.print(PrinterBlocks.WALL.val());
+			}
+			System.out.print("\n");
+			for (int j = 0; j < maze.getColumns(); ++j) {
+				Room room = maze.getRoom(i, j);
+				if (room.hasWestWall()) {
+					System.out.print(PrinterBlocks.WALL.val());
+				} else {
+					if (j > 0 && maze.getRoom(i, j - 1).onPath && room.onPath) {
+						System.out.print(PrinterBlocks.PATH.val());
+					} else {
+						System.out.print(PrinterBlocks.AIR.val());
+					}
+				}
+				if (room.onPath) {
+					System.out.print(PrinterBlocks.PATH.val());
+				} else {
+					System.out.print(PrinterBlocks.AIR.val());
+				}
+			}
+			System.out.println(PrinterBlocks.WALL.val());
+		}
+		for (int j = 0; j < maze.getColumns() * 2 + 1; ++j) {
+			System.out.print(PrinterBlocks.WALL.val());
+		}
+		System.out.print("\n");
+	}
+}
